@@ -1,0 +1,245 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <!-- Required meta tags -->
+    <meta charset="UTF-8">
+    <meta name="description" content="this is a Manual Named Entities Tagger for Spacy, You can use it to create your own training datasets.">
+    <meta name="keywords" content="HTML,CSS,XML,JavaScript">
+    <meta name="author" content="Hamza EL KAROUI">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+
+
+    <!-- Bootstrap CSS -->
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.1/css/bootstrap.min.css"
+          integrity="sha384-WskhaSGFgHYWDcbwN70/dfYBj47jz9qbsMId/iRN3ewGhXQFZCSftd1LZCfmhktB" crossorigin="anonymous">
+        <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.0.13/css/all.css" integrity="sha384-DNOHZ68U8hZfKXOrtjWvjxusGo9WQnrNx2sqG0tfsghAvtVlRW3tvkXWZh58N9jp" crossorigin="anonymous">
+
+    <!-- HighlightJS-->
+
+    <script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/highlight.min.js"></script>
+    <link rel="stylesheet" href="dracula.css">
+    <script>hljs.initHighlightingOnLoad();</script>
+
+    <title>Named Entity Spacy Tagger | By Hamza EL KAROUI</title>
+
+    <style>
+          .named-badge {
+                    user-select: none;
+                    -moz-user-select: none;
+                    -khtml-user-select: none;
+                    -webkit-user-select: none;
+                    -o-user-select: none;
+            }
+
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="row" id="app">
+        <div class="col-sm-4">
+
+
+
+            <div class="card border-info mb-3">
+                <div class="card-header"> Tags list</div>
+                <div class="card-body text-info">
+
+
+
+                    <div v-for="tag in tags"  v-bind:class="['btn',isactive(tag.text) ? 'btn-success' : 'btn-outline-success']" v-bind:style="{'background-color': tag.color ,  'border-color': tag.color, 'color':'#fff'}">
+                        <input  type="radio" class="" :value="tag.text" :name="tag.text" :id="tag.text" v-model="selected_tag">
+                        <label class="form-check-label" :for="tag.text"> {{ tag.text }} </label>
+                        <br>
+                    </div>
+                    <br>
+
+                <h5 class="card-title">Tag List</h5>
+                <div class="input-group mb-3">
+                    <input placeholder="Type a new tag name" class="form-control" type="text" v-model="to_add_tag" v-on:keyup.enter="add_tag">
+                    <div class="input-group-append">
+                        <button class="btn btn-outline-secondary" type="button" :disabled="to_add_tag ? false : true" v-on:click="add_tag">Add</button>
+                    </div>
+                </div>
+
+
+
+
+                </div>
+            </div>
+
+
+        </div>
+        <div class="col-sm-8">
+            <div class="row">
+                <div class="card border-info mb-3">
+                    <div class="card-header">
+                        Tape your text here and click on Tag Text to start tagging.
+                    </div>
+                    <div class="card-body text-info">
+                        <div>
+                            <textarea v-model="text" placeholder="add multiple lines" style="width: 40em;height: 10em"></textarea>
+                            <button v-on:click="copy_text" class="btn btn-outline-success btn-lg">Tag Text &nbsp; <i class="fas fa-tag"></i></button>
+                            <br><br>
+                            <h5>Select the tag type from Tag list, and select the word from the below text to be tagged.</h5>
+                            <br><br>
+                            <div v-on:click="done">
+                                <span style="white-space: pre-line" id="_text_field"></span>
+
+                            </div>
+                            <br><br>
+                            <button v-on:click="to_json" class="btn btn-outline-success btn-lg">Generate Spacy Training data &nbsp; <i class="fas fa-code"></i></button>
+                            <br><br>
+                            <pre><code id="spacy_code" class="python Darkula"></code></pre>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- Optional JavaScript -->
+    <!-- JavaScript -->
+    <script src="https://cdn.jsdelivr.net/npm/vue"></script>
+
+    <!-- jQuery first, then Popper.js, then Bootstrap JS -->
+    <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js" integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.3/umd/popper.min.js" integrity="sha384-ZMP7rVo3mIykV+2+9J3UJ46jBk0WLaUAdn689aCwoqbBJiSnjAK/l8WvCWPIPm49" crossorigin="anonymous"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.1.1/js/bootstrap.min.js" integrity="sha384-smHYKdLADwkXOn1EmN1qk/HfnUcbVRZyYmZ4qpPea6sjB/pTJ0euyQp0Mk8ck+5T" crossorigin="anonymous"></script>
+<script>
+
+
+    myapp = new Vue({
+      el: "#app",
+      data: {
+        text : `Uber blew through $1 million a week.
+Android Pay expands to Canada.
+Spotify steps up Asia expansion.
+Google Maps launches location sharing.
+Google rebrands its business apps.
+look what i found on google! 😂.`,
+        text_tag:'',
+        selected : '' ,
+        selected_tag : 'ORG',
+        option : 'ORG',
+        tags : [ {text: 'ORG' , color: '#e74c3c'} , {text: 'PERS' , color: '#3498db'} , {text: 'DATE' , color: '#1abc9c'}, {text: 'PLACE' , color: '#f1c40f'}, {text: 'POS' , color: '#34495e'}, {text: 'NEG' , color: '#95a5a6'} ] ,
+        to_add_tag : '',
+        isactive : function(a){return a== this.selected_tag},
+        color_of : function(tag){
+            for(var i in this.tags){
+                if(this.tags[i].text == tag){
+                    return this.tags[i].color
+                }
+            }
+            return 0
+        }
+      },
+      methods: {
+
+            copy_text : function(){
+                document.getElementById("_text_field").innerHTML ='';
+                docs = this.text.split('\n');
+                for(var i=0;i<docs.length;i++){
+                    document.getElementById("_text_field").innerHTML += `<div id="doc_${i}">${docs[i]}</div>`
+                }
+            },
+
+            add_tag : function(event){
+                if(!this.color_of(this.to_add_tag)){
+                this.tags.push({text: this.to_add_tag , color: this.getRandomColor()});
+                }
+                this.to_add_tag = ''
+
+            },
+
+            getRandomColor : function getRandomColor() {
+                  var letters = '0123456789ABCDEF';
+                  var color = '#';
+                  for (var i = 0; i < 6; i++) {
+                    color += letters[Math.floor(Math.random() * 16)];
+                  }
+                  return color;
+                },
+
+            to_json : function(e){
+                parts = document.getElementById("_text_field").childNodes
+                var spacy_doc = []
+                parts.forEach(function (node) {
+                    var text_json = []
+                    var char_index = 0
+                    elements = node.childNodes;
+                    for (var i = 0; i < elements.length; i++) {
+                        if(elements[i].nodeType == 3){
+                            if(elements[i].nodeValue != ''){
+                                char_index += elements[i].nodeValue.length
+                            }
+                        }
+                        else{
+                            var tmp = elements[i].getAttribute("text");
+                            if(tmp.slice(-1) == ' '){
+                                tmp = tmp.substring(0, tmp.length - 1);
+                                text_json.push(`(${char_index}, ${char_index+tmp.length}, '${elements[i].getAttribute("label")}')`);
+                                char_index += tmp.length + 1
+                            }
+                            else{
+                                text_json.push(`(${char_index}, ${char_index+tmp.length}, '${elements[i].getAttribute("label")}')`)
+                                char_index += tmp.length
+                            }
+                        }
+
+                    }
+                    spacy_doc.push(text_json);
+                });
+                console.log(spacy_doc)
+                var train_data ='train_data = [\n';
+                var docs = this.text.split('\n');
+                for(var i=0; i<spacy_doc.length;i++){
+                    console.log(spacy_doc[i])
+                    if(spacy_doc[i].length){
+                        train_data += `("${docs[i]}", [ ${spacy_doc[i].join(', ')} ])\n`;
+                    }
+                    else{
+                        train_data += `("${docs[i]}", [ ])\n`;
+                    }
+
+                }
+                train_data += ']';
+                document.getElementById("spacy_code").innerHTML = train_data;
+            },
+
+            done : function (event) {
+                var sel, range;
+                if (window.getSelection) {
+                    sel = window.getSelection();
+                    if (sel.rangeCount && sel.toString().length) {
+                            text = sel.toString();
+                        range = sel.getRangeAt(0);
+                        range.deleteContents();
+                        var tag = document.createElement("tag");
+                        tag.setAttribute('text', text);
+
+                        tag.setAttribute('onclick', "untag(this)");
+
+                        tag.setAttribute('label', this.selected_tag);
+                        color_tag = this.color_of(this.selected_tag)
+                        tag.innerHTML = '<span class="named-badge btn btn-warning" style="color:#fff; background-color:'+color_tag+'; border-color:'+color_tag+';">'+text+' <span class="badge badge-light"> '+this.selected_tag+' </span></span>'
+                        range.insertNode(tag);
+                        window.getSelection().removeAllRanges();
+                    }
+                }
+            }
+      }
+    })
+
+untag = function(obj){
+    text = obj.getAttribute('text');
+    obj.replaceWith(document.createTextNode( text ));
+};
+
+</script>
+
+</body>
+</html>
